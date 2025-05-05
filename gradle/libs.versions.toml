@@ -3,6 +3,8 @@ agp = "8.9.0"
 kotlin = "2.0.0"
 ktor = "3.1.2"
 serialization = "1.7.3"
+kover = "0.9.1"
+mavenPublish = "0.30.0"
 
 
 [libraries]
@@ -23,3 +25,5 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 [plugins]
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinKover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
