@@ -23,13 +23,13 @@ jobs:
         with:
           json_suite_details: true
           files: |
-            **/inflekt-core/build/test-results/testDebugUnitTest/TEST*.xml
+            **/phoenix-core/build/test-results/testDebugUnitTest/TEST*.xml
 
       - name: Publish Kover Reports
         id: kover
         uses: mi-kas/kover-report@v1
         with:
           path: |
-            ${{ github.workspace }}/inflekt-core/build/reports/kover/report.xml
+            ${{ github.workspace }}/phoenix-core/build/reports/kover/report.xml
           title: Code Coverage
           update-comment: true
