@@ -1,4 +1,4 @@
-package com.github.dsrees.phoenix
+package com.github.dsrees.phoenix.message
 
 /**
  * Defines a message that originates from the client and is being sent to the Server.
@@ -13,4 +13,5 @@ data class OutgoingMessage(
     val ref: String?,
     val topic: String,
     val event: String,
+    val payload: PayloadType,
 )

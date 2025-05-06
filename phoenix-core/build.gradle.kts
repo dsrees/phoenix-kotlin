@@ -4,7 +4,12 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinKover)
+    alias(libs.plugins.mavenPublish)
 }
+
+group = "com.github.dsrees.phoenix"
+version = "0.1.0"
 
 kotlin {
     androidTarget {
@@ -51,5 +56,38 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+
+mavenPublishing {
+    coordinates("com.github.dsrees", "phoenix-kotlin", version.toString())
+
+    pom {
+        name = "phoenix-kkotlin"
+        description = "A Phoenix Channels client for Kotlin Multiplatform."
+        url = "https://github.com/dsrees/phoenix-kotlin"
+        inceptionYear = "2025"
+
+        licenses {
+            license {
+                name = "MIT License"
+                url = "https://opensource.org/license/MIT"
+                distribution = "https://opensource.org/license/MIT"
+            }
+        }
+
+        scm {
+            connection = "scm:git:git://github.com/dsrees/phoenix-kotlin.git"
+            developerConnection = "scm:git:ssh://github.com/dsrees/phoenix-kotlin.git"
+            url = "https://github.com/dsrees/phoenix-kotlin"
+        }
+
+        developers {
+            developer {
+                name = "Daniel Rees"
+                email = "daniel.rees18@gmail.com"
+                url = "https://github.com/dsrees"
+            }
+        }
     }
 }

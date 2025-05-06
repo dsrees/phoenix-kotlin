@@ -1,4 +1,4 @@
-package com.github.dsrees.phoenix
+package com.github.dsrees.phoenix.message
 
 /**
  * Defines a message dispatched from the server and received by the client.
@@ -16,7 +16,7 @@ package com.github.dsrees.phoenix
  * accessed for additional information.
  */
 
-data class IncomingMessage(
+class IncomingMessage(
     /** The unique string ref when joining */
     val joinRef: String?,
     /** The unique string ref */
@@ -34,7 +34,7 @@ data class IncomingMessage(
      * If determined, then the data is the payload from the serializer.
      * If undetermined, then the payload must be parsed from the data
      */
-    val payload: ByteArray,
+    val payload: PayloadType,
     /** The raw text from the server if the message was sent as a String */
     val rawText: String?,
     /** The raw binary value from the server if the message was sent as Data */

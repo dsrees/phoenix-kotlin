@@ -1,0 +1,16 @@
+root = true
+
+[*.{kt,kts}]
+ktlint_code_style = ktlint_official
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Override for a specific package/directory
+[**Test.kt]
+ktlint_standard_class-signature = disabled
+
+
+
+
