@@ -1,16 +1,30 @@
 package com.github.dsrees.phoenix
 
+import com.github.dsrees.phoenix.message.IncomingMessage
+import com.github.dsrees.phoenix.message.OutgoingMessage
+import com.github.dsrees.phoenix.message.PayloadType
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
 interface TransportSerializer {
-    fun encode(): String
+    fun encode(message: OutgoingMessage): String
 
-    fun binaryEncode(): ByteArray
+    fun binaryEncode(message: OutgoingMessage): ByteArray
 
-    fun decode(text: String)
+    fun decode(text: String): IncomingMessage
 
     fun binaryDecode(data: ByteArray): IncomingMessage
 }
 
-class PhoenixTransportSerializer : TransportSerializer {
+class PhoenixTransportSerializer(
+    private val json: Json = Json,
+) : TransportSerializer {
     companion object {
         private const val HEADER_LENGTH: Int = 1
         private const val META_LENGTH: Int = 4
@@ -20,18 +34,96 @@ class PhoenixTransportSerializer : TransportSerializer {
         private const val KIND_BROADCAST: UInt = 2u
     }
 
-    override fun encode(): String {
-        TODO("Not yet implemented")
+    override fun encode(message: OutgoingMessage): String =
+        when (message.payload) {
+            is PayloadType.Binary -> throw IllegalArgumentException("Expected JSON. Got ByteArray. use `binaryEncode`")
+            is PayloadType.Json -> {
+                buildJsonArray {
+                    add(JsonPrimitive(message.joinRef))
+                    add(JsonPrimitive(message.ref))
+                    add(JsonPrimitive(message.topic))
+                    add(JsonPrimitive(message.event))
+                    add(message.payload.element)
+                }.toString()
+            }
+        }
+
+    override fun binaryEncode(message: OutgoingMessage): ByteArray {
+        var byteArray = byteArrayOf()
+
+        // Add the KIND, which is always a PUSH from the client to the server
+        byteArray += KIND_PUSH.toByte()
+
+        val joinRefByteArray = message.joinRef?.encodeToByteArray()
+        val refByteArray = message.ref?.encodeToByteArray()
+        val topicByteArray = message.topic.encodeToByteArray()
+        val eventByteArray = message.event.encodeToByteArray()
+
+        // Add the lengths of each piece of the message
+        byteArray += (joinRefByteArray?.size ?: 0).toByte()
+        byteArray += (refByteArray?.size ?: 0).toByte()
+        byteArray += topicByteArray.size.toByte()
+        byteArray += eventByteArray.size.toByte()
+
+        joinRefByteArray?.let { byteArray += it }
+        refByteArray?.let { byteArray += it }
+        byteArray += (topicByteArray)
+        byteArray += (eventByteArray)
+
+        when (message.payload) {
+            is PayloadType.Binary -> byteArray += message.payload.data
+            is PayloadType.Json -> {
+                message.payload.element
+                    .toString()
+                    .encodeToByteArray()
+                    .also { byteArray += it }
+            }
+        }
+
+        return byteArray
     }
 
-    override fun binaryEncode(): ByteArray {
-        TODO("Not yet implemented")
-    }
+    override fun decode(text: String): IncomingMessage {
+        val unKeyedJsonArray = json.parseToJsonElement(text).jsonArray
+        val (joinRef, ref, topic, event, payload) = unKeyedJsonArray
 
-    override fun decode(text: String) {
-//        json.fromstring
+        return when {
+            event == JsonPrimitive(ChannelEvent.REPLY) -> {
+                val status = payload.jsonObject["status"]
+                val response =
+                    payload.jsonObject["response"]
+                        ?: throw IllegalArgumentException("Invalid reply structure. Expected response key. $text")
 
-        TODO("Not yet implemented")
+                buildIncomingMessage(
+                    joinRef = joinRef.jsonPrimitive.contentOrNull,
+                    ref = ref.jsonPrimitive.contentOrNull,
+                    topic = topic.jsonPrimitive.content,
+                    event = ChannelEvent.REPLY,
+                    status = status?.toString(),
+                    payload = PayloadType.Json(response),
+                    rawText = text,
+                )
+            }
+
+            joinRef != JsonNull || ref != JsonNull -> {
+                buildIncomingMessage(
+                    joinRef = joinRef.jsonPrimitive.contentOrNull,
+                    ref = ref.jsonPrimitive.contentOrNull,
+                    topic = topic.jsonPrimitive.content,
+                    event = event.jsonPrimitive.content,
+                    payload = PayloadType.Json(payload),
+                    rawText = text,
+                )
+            }
+
+            else ->
+                buildIncomingMessage(
+                    topic = topic.jsonPrimitive.content,
+                    event = event.jsonPrimitive.content,
+                    payload = PayloadType.Json(payload),
+                    rawText = text,
+                )
+        }
     }
 
     override fun binaryDecode(data: ByteArray): IncomingMessage =
@@ -71,7 +163,7 @@ class PhoenixTransportSerializer : TransportSerializer {
             joinRef = joinRef,
             topic = topic,
             event = event,
-            payload = data,
+            payload = PayloadType.Binary(data),
             rawBinary = buffer,
         )
     }
@@ -114,7 +206,7 @@ class PhoenixTransportSerializer : TransportSerializer {
             topic = topic,
             event = ChannelEvent.REPLY,
             status = event,
-            payload = data,
+            payload = PayloadType.Binary(data),
             rawBinary = buffer,
         )
     }
@@ -140,7 +232,7 @@ class PhoenixTransportSerializer : TransportSerializer {
         return buildIncomingMessage(
             topic = topic,
             event = event,
-            payload = data,
+            payload = PayloadType.Binary(data),
             rawBinary = buffer,
         )
     }
@@ -151,7 +243,7 @@ class PhoenixTransportSerializer : TransportSerializer {
         topic: String,
         event: String,
         status: String? = null,
-        payload: ByteArray,
+        payload: PayloadType,
         rawText: String? = null,
         rawBinary: ByteArray? = null,
     ): IncomingMessage =
